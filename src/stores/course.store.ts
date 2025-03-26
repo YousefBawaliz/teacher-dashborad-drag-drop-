@@ -118,14 +118,23 @@ export const useCourseStore = defineStore('course', () => {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      // Debug user data
+      console.log('Auth store user in fetchCourses:', authStore.user);
+      console.log('Is teacher?', authStore.isTeacher);
+      console.log('User ID:', authStore.user?.id);
+      console.log('All mock courses:', mockCourses);
+      
       // Mock API response (replace with actual API call in production)
       if (authStore.isTeacher) {
         // For teachers, get courses they created
-        courses.value = mockCourses.filter(course => course.teacher_id === authStore.user?.id);
+        courses.value = JSON.parse(JSON.stringify(
+          mockCourses.filter(course => course.teacher_id === authStore.user?.id)
+        ));
+        console.log('Filtered courses for teacher:', courses.value);
       } else {
         // For students, in a real app this would get courses from their enrolled classes
         // For mock data, we'll just return some courses for testing
-        courses.value = mockCourses.slice(0, 3);
+        courses.value = JSON.parse(JSON.stringify(mockCourses.slice(0, 3)));
       }
       
       // Initialize filtered courses with all courses
@@ -133,6 +142,7 @@ export const useCourseStore = defineStore('course', () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch courses';
       error.value = message;
+      console.error('Error fetching courses:', err);
     } finally {
       isLoading.value = false;
     }

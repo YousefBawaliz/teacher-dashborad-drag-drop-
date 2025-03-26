@@ -47,33 +47,33 @@ const router = createRouter({
   routes
 });
 
-// Global navigation guard
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
+// // Global navigation guard
+// router.beforeEach((to, from, next) => {
+//   const authStore = useAuthStore();
   
-  // Check if the route requires authentication
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const requiresStudent = to.matched.some(record => record.meta.requiresStudent);
-  const requiresTeacher = to.matched.some(record => record.meta.requiresTeacher);
-  const isGuestRoute = to.matched.some(record => record.meta.guest);
+//   // Check if the route requires authentication
+//   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+//   const requiresStudent = to.matched.some(record => record.meta.requiresStudent);
+//   const requiresTeacher = to.matched.some(record => record.meta.requiresTeacher);
+//   const isGuestRoute = to.matched.some(record => record.meta.guest);
   
-  // Route protection logic
-  if (requiresAuth && !authStore.isAuthenticated) {
-    // Redirect to login page if authentication is required but user is not authenticated
-    next('/login');
-  } else if (isGuestRoute && authStore.isAuthenticated) {
-    // Redirect to dashboard if user is already authenticated but trying to access guest routes
-    next('/');
-  } else if (requiresStudent && authStore.userRole !== 'student') {
-    // Redirect to dashboard if route requires student role but user is not a student
-    next('/');
-  } else if (requiresTeacher && authStore.userRole !== 'teacher') {
-    // Redirect to dashboard if route requires teacher role but user is not a teacher
-    next('/');
-  } else {
-    // Proceed to the requested route
-    next();
-  }
-});
+//   // Route protection logic
+//   if (requiresAuth && !authStore.isAuthenticated) {
+//     // Redirect to login page if authentication is required but user is not authenticated
+//     next('/login');
+//   } else if (isGuestRoute && authStore.isAuthenticated) {
+//     // Redirect to dashboard if user is already authenticated but trying to access guest routes
+//     next('/');
+//   } else if (requiresStudent && authStore.userRole !== 'student') {
+//     // Redirect to dashboard if route requires student role but user is not a student
+//     next('/');
+//   } else if (requiresTeacher && authStore.userRole !== 'teacher') {
+//     // Redirect to dashboard if route requires teacher role but user is not a teacher
+//     next('/');
+//   } else {
+//     // Proceed to the requested route
+//     next();
+//   }
+// });
 
 export default router;

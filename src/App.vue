@@ -9,20 +9,34 @@ const route = useRoute();
 const router = useRouter();
 
 // Check authentication status on app mount
-onMounted(() => {
-  // Initialize auth from localStorage if available
+onMounted(async () => {
+  console.log('App.vue mounted');
+  
+  // Initialize auth first
   authStore.initAuth();
+  console.log('Auth initialized, authenticated:', authStore.isAuthenticated);
   
-  // For testing DashboardView, we'll skip auth checks
-  // const isLoginPage = route.path === '/login';
+  // For testing: Auto-login as teacher
+  if (!authStore.isAuthenticated) {
+    console.log('Not authenticated, logging in as teacher...');
+    
+    // Login as teacher
+    const loginResult = await authStore.login({
+      email: 'teacher@example.com',
+      password: 'password'
+    });
+    
+    console.log('Login result:', loginResult);
+    console.log('Auto-logged in as teacher for testing');
+    console.log('Current user:', authStore.user);
+    console.log('Is authenticated:', authStore.isAuthenticated);
+  }
   
-  // if (!authStore.isAuthenticated && !isLoginPage) {
-  //   // Redirect to login if not authenticated
-  //   router.push('/login');
-  // } else if (authStore.isAuthenticated && isLoginPage) {
-  //   // Redirect to dashboard if already authenticated
-  //   router.push('/');
-  // }
+  // Always redirect to dashboard for testing
+  if (route.path !== '/') {
+    console.log('Redirecting to dashboard');
+    router.push('/');
+  }
 });
 </script>
 
@@ -33,7 +47,7 @@ onMounted(() => {
 </template>
 
 <style>
-/* Essential styles only */
+/* Global styles */
 :root {
   --app-background: #f5f7fa;
 }
@@ -46,7 +60,7 @@ html, body {
   font-family: 'Roboto', sans-serif;
 }
 
-/* Commented out utility classes as they might be used elsewhere
+/* Utility classes */
 .cursor-pointer {
   cursor: pointer;
 }
@@ -57,5 +71,5 @@ html, body {
 
 .cursor-grabbing {
   cursor: grabbing !important;
-} */
+}
 </style>

@@ -112,35 +112,48 @@ export const useClassStore = defineStore('class', () => {
   });
 
   // Actions
-  /**
+ /**
    * Fetch all classes for the current teacher
    */
-  async function fetchClasses(): Promise<void> {
-    if (!authStore.isAuthenticated) return;
+ async function fetchClasses(): Promise<void> {
+  if (!authStore.isAuthenticated) return;
+  
+  isLoading.value = true;
+  error.value = null;
+  
+  try {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    isLoading.value = true;
-    error.value = null;
+    // Debug user data
+    console.log('Auth store user in fetchClasses:', authStore.user);
+    console.log('Is teacher?', authStore.isTeacher);
+    console.log('User ID:', authStore.user?.id);
     
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Mock API response (replace with actual API call in production)
+    if (authStore.isTeacher) {
+      // For testing: Make sure to copy the mock data to avoid reference issues
+      classes.value = JSON.parse(JSON.stringify(
+        mockClasses.filter(c => c.teacher_id === authStore.user?.id)
+      ));
       
-      // Mock API response (replace with actual API call in production)
-      if (authStore.isTeacher) {
-        classes.value = mockClasses.filter(c => c.teacher_id === authStore.user?.id);
-      } else {
-        // For students, find classes they're enrolled in
-        classes.value = mockClasses.filter(c => 
+      console.log('Filtered classes for teacher:', classes.value);
+    } else {
+      // For students, find classes they're enrolled in
+      classes.value = JSON.parse(JSON.stringify(
+        mockClasses.filter(c => 
           c.students?.some(student => student.id === authStore.user?.id)
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch classes';
-      error.value = message;
-    } finally {
-      isLoading.value = false;
+        )
+      ));
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch classes';
+    error.value = message;
+    console.error('Error fetching classes:', err);
+  } finally {
+    isLoading.value = false;
   }
+}
 
   /**
    * Fetch a specific class by ID

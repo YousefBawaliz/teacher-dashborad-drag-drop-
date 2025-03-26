@@ -5,7 +5,6 @@ import AppNavigation from '../components/layout/AppNavigation.vue';
 import AppSidebar from '../components/layout/AppSidebar.vue';
 import ClassCard from '../components/classes/ClassCard.vue';
 import CourseCard from '../components/courses/CourseCard.vue';
-import DragAndDropContainer from '../components/dashboard/DragAndDropContainer.vue';
 import { useAuthStore } from '../stores/auth.store';
 import { useClassStore } from '../stores/class.store';
 import { useCourseStore } from '../stores/course.store';
@@ -30,14 +29,34 @@ const hasError = computed(() => errorMessage.value !== '');
 const draggingCourse = ref<Course | null>(null);
 const dragOverClassId = ref<number | null>(null);
 
-// Redirect to login if not authenticated
+// Setup dashboard data
 onMounted(async () => {
-  // Initialize authentication
+  // Initialize authentication - auto-login is handled in App.vue for testing
   authStore.initAuth();
   
-  if (!authStore.isAuthenticated) {
-    await router.push('/login');
-    return;
+  // Load dashboard data - fetch classes and courses
+  try {
+    // For testing purposes, log the user to the console
+    console.log("Current logged in user:", authStore.currentUser);
+    
+    // Load classes and courses in parallel
+    console.log("Loading dashboard data...");
+    const classesPromise = classStore.fetchClasses();
+    const coursesPromise = courseStore.fetchCourses();
+    
+    await Promise.all([classesPromise, coursesPromise]);
+    
+    // Log the loaded data
+    console.log("Loaded classes:", classStore.classes);
+    console.log("Loaded courses:", courseStore.courses);
+    console.log("Teacher classes:", classStore.teacherClasses);
+    console.log("Teacher courses:", courseStore.teacherCourses);
+    
+    isLoading.value = false;
+  } catch (error) {
+    console.error("Error loading dashboard data:", error);
+    errorMessage.value = 'Failed to load dashboard data. Please try refreshing the page.';
+    isLoading.value = false;
   }
 
   try {
@@ -91,8 +110,18 @@ const studentCourses = computed(() => {
 });
 
 // Drag and drop handlers
-const handleDragStart = (course: Course) => {
+const handleDragStart = (course: Course, event: DragEvent) => {
   draggingCourse.value = course;
+  
+  // Set data transfer for drag operation
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', course.id.toString());
+    event.dataTransfer.setData('application/json', JSON.stringify({
+      courseId: course.id,
+      courseTitle: course.title
+    }));
+  }
 };
 
 const handleDragEnd = () => {
@@ -112,17 +141,44 @@ const handleDragLeave = () => {
 const handleDrop = async (classId: number, event: DragEvent) => {
   event.preventDefault();
   
-  if (!draggingCourse.value) return;
+  let courseToAssign = draggingCourse.value;
+  
+  // If draggingCourse is null, try to get course ID from dataTransfer
+  if (!courseToAssign && event.dataTransfer) {
+    try {
+      // Try to get the data from dataTransfer
+      const jsonData = event.dataTransfer.getData('application/json');
+      if (jsonData) {
+        const data = JSON.parse(jsonData);
+        const courseId = data.courseId;
+        courseToAssign = courses.value.find(c => c.id === courseId) || null;
+      } else {
+        // Fallback to plain text
+        const courseId = parseInt(event.dataTransfer.getData('text/plain'), 10);
+        if (!isNaN(courseId)) {
+          courseToAssign = courses.value.find(c => c.id === courseId) || null;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing drag data:', error);
+    }
+  }
+  
+  if (!courseToAssign) {
+    console.error('Failed to determine which course to assign');
+    errorMessage.value = 'Failed to assign course to class. Could not determine course.';
+    return;
+  }
   
   try {
     // Assign the course to the class
     await classStore.addCourseToClass({
       class_id: classId,
-      course_id: draggingCourse.value.id
+      course_id: courseToAssign.id
     });
     
-    // Show success message (you could add a toast/snackbar system here)
-    console.log(`Course "${draggingCourse.value.title}" added to class ID ${classId}`);
+    // Show success message
+    console.log(`Course "${courseToAssign.title}" added to class ID ${classId}`);
   } catch (error) {
     console.error('Failed to assign course to class:', error);
     errorMessage.value = 'Failed to assign course to class. Please try again.';
@@ -262,7 +318,7 @@ const createNewCourse = () => {
               <CourseCard 
                 :course="course"
                 draggable="true"
-                @dragstart="(e) => handleDragStart(course)"
+                @dragstart="(e) => handleDragStart(course, e)"
                 @dragend="handleDragEnd"
               />
             </v-col>
