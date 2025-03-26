@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import type { PropType } from 'vue';
 import type { Class, ClassWithRelations } from '../../interfaces/Class';
+
+// Initialize router
+const router = useRouter();
 
 // Define props with TypeScript types for type safety
 const props = defineProps({
@@ -51,6 +55,11 @@ const cardClass = computed(() => {
   };
 });
 
+// Navigate to class details
+const navigateToClassDetails = () => {
+  router.push(`/classes/${props.classItem.id}`);
+};
+
 // Event handlers with proper TypeScript typings
 const handleDragOver = (event: DragEvent) => {
   // Prevent default to allow drop
@@ -87,6 +96,10 @@ const handleDrop = (event: DragEvent) => {
 
 const handleClick = () => {
   emit('click');
+  // If not handling the click in a parent component, navigate directly
+  if (!props.isStudentView) {
+    navigateToClassDetails();
+  }
 };
 </script>
 
@@ -127,9 +140,11 @@ const handleClick = () => {
         variant="text"
         color="primary"
         size="small"
-        icon="mdi-eye"
-        @click.stop="handleClick"
-      ></v-btn>
+        @click.stop="navigateToClassDetails"
+      >
+        <v-icon icon="mdi-eye" class="me-1"></v-icon>
+        View Details
+      </v-btn>
       
       <!-- Drop zone indicator for teacher view -->
       <span v-if="!isStudentView && isDragOver" class="text-caption text-primary">
@@ -146,6 +161,7 @@ const handleClick = () => {
 .class-card {
   position: relative;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .class-card:hover {

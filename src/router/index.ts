@@ -3,8 +3,10 @@ import { useAuthStore } from '../stores/auth.store';
 
 // Import views
 import DashboardView from '../views/DashBoardView.vue';
+import ClassDetailsView from '../components/classes/ClassDetailsView.vue';
+import ClassesView from '../views/ClassesView.vue';
+import CoursesView from '../views/CoursesView.vue';
 // import LoginView from '../views/LoginView.vue';
-// import ClassDetailsView from '../views/ClassDetailsView.vue';
 // import StudentDashboardView from '../views/StudentDashboardView.vue';
 
 // Setup routes configuration
@@ -15,18 +17,30 @@ const routes = [
     component: DashboardView,
     meta: { requiresAuth: true }
   },
+  {
+    path: '/classes',
+    name: 'Classes',
+    component: ClassesView,
+    meta: { requiresAuth: true, requiresTeacher: true }
+  },
+  {
+    path: '/classes/:id',
+    name: 'ClassDetails',
+    component: ClassDetailsView,
+    props: true,
+    meta: { requiresAuth: true, requiresTeacher: true }
+  },
+  {
+    path: '/courses',
+    name: 'Courses',
+    component: CoursesView,
+    meta: { requiresAuth: true, requiresTeacher: true }
+  },
   // {
   //   path: '/login',
   //   name: 'Login',
   //   component: LoginView,
   //   meta: { guest: true }
-  // },
-  // {
-  //   path: '/classes/:id',
-  //   name: 'ClassDetails',
-  //   component: ClassDetailsView,
-  //   props: true,
-  //   meta: { requiresAuth: true }
   // },
   // {
   //   path: '/student',
@@ -47,7 +61,7 @@ const router = createRouter({
   routes
 });
 
-// // Global navigation guard
+// Navigation guard - Uncomment this when implementing full authentication
 // router.beforeEach((to, from, next) => {
 //   const authStore = useAuthStore();
   

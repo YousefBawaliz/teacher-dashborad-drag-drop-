@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth.store';
 
-// Initialize auth store
+// Initialize auth store and router
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 // Sidebar visibility state (for mobile responsiveness)
 const isSidebarOpen = ref(true);
@@ -50,6 +51,22 @@ const handleLogout = async () => {
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
 };
+
+// Check if a link is active
+const isLinkActive = (path: string): boolean => {
+  // Exact match for dashboard
+  if (path === '/' && route.path === '/') {
+    return true;
+  }
+  
+  // For other pages, check if the route starts with the path
+  // This handles active state for nested routes like /classes/1
+  if (path !== '/' && route.path.startsWith(path)) {
+    return true;
+  }
+  
+  return false;
+};
 </script>
 
 <template>
@@ -58,7 +75,7 @@ const toggleSidebar = () => {
     app
     class="sidebar"
     permanent
-    color="primary"
+    :color="'primary'"
     :expand-on-hover="false"
     :rail="false"
   >
@@ -83,7 +100,9 @@ const toggleSidebar = () => {
         :key="index"
         :to="link.path"
         :value="link.title"
-        color="secondary"
+        :active="isLinkActive(link.path)"
+        color="white"
+        :variant="isLinkActive(link.path) ? 'flat' : undefined"
         class="mb-1"
       >
         <template v-slot:prepend>
@@ -121,5 +140,16 @@ const toggleSidebar = () => {
 <style scoped>
 .sidebar {
   border-right: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Improve contrast for navigation items in dark theme */
+:deep(.v-list-item--active) {
+  font-weight: bold;
+  background-color: #1a237e !important; /* Dark blue background for active items */
+  color: white !important;
+}
+
+:deep(.v-list-item:hover:not(.v-list-item--active)) {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 </style>
