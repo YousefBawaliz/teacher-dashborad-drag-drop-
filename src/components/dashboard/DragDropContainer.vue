@@ -48,8 +48,14 @@ const clearMessages = () => {
   }, 3000);
 };
 
+// Logging helper
+const logDebug = (message: string, ...data: any[]) => {
+  console.log(`[DragDropContainer] ${message}`, ...data);
+};
+
 // Drag event handlers
 const handleDragStart = (course: Course, event: DragEvent) => {
+  logDebug('Drag start:', course);
   draggingCourse.value = course;
   
   // Set data transfer for better browser compatibility
@@ -73,6 +79,7 @@ const handleDragStart = (course: Course, event: DragEvent) => {
 };
 
 const handleDragEnd = () => {
+  logDebug('Drag end');
   draggingCourse.value = null;
   dragOverClassId.value = null;
   document.body.classList.remove('dragging-active');
@@ -111,73 +118,105 @@ const handleDragLeave = () => {
 
 const handleDrop = async (classId: number, event: DragEvent) => {
   event.preventDefault();
+  logDebug('Drop event on class:', classId);
   
-  if (!draggingCourse.value) {
+  // Find the target class first to ensure it exists
+  const targetClass = props.classes.find(c => c.id === classId);
+  if (!targetClass) {
+    const errorMsg = `Target class with ID ${classId} not found`;
+    logDebug(errorMsg);
+    dragError.value = errorMsg;
+    emit('error', dragError.value);
+    clearMessages();
+    return;
+  }
+  
+  // Get or recover the dragging course
+  let courseToAssign = draggingCourse.value;
+  
+  if (!courseToAssign) {
     // Try to get course from dataTransfer if direct reference is lost
     try {
       const jsonData = event.dataTransfer?.getData('application/json');
+      logDebug('Retrieved JSON data:', jsonData);
+      
       if (jsonData) {
         const data = JSON.parse(jsonData);
         if (data.courseId) {
-          const course = props.courses.find(c => c.id === data.courseId);
-          if (course) {
-            draggingCourse.value = course;
-          }
+          courseToAssign = props.courses.find(c => c.id === data.courseId) || null;
+          logDebug('Found course from data transfer:', courseToAssign);
+        }
+      } else {
+        // Try to get from plain text as fallback
+        const textData = event.dataTransfer?.getData('text/plain');
+        logDebug('Retrieved text data:', textData);
+        
+        if (textData && textData.startsWith('Course: ')) {
+          // Find course by title
+          const courseTitle = textData.replace('Course: ', '');
+          courseToAssign = props.courses.find(c => c.title === courseTitle) || null;
+          logDebug('Found course by title:', courseToAssign);
         }
       }
     } catch (e) {
-      console.error('Error parsing drop data:', e);
+      logDebug('Error parsing drop data:', e);
     }
-    
-    if (!draggingCourse.value) {
-      dragError.value = 'Unable to determine which course was dropped';
-      emit('error', dragError.value);
-      clearMessages();
-      return;
-    }
+  }
+  
+  if (!courseToAssign) {
+    const errorMsg = 'Unable to determine which course was dropped';
+    logDebug(errorMsg);
+    dragError.value = errorMsg;
+    emit('error', dragError.value);
+    clearMessages();
+    return;
   }
   
   isLoading.value = true;
   
   try {
-    // Find the target class
-    const targetClass = props.classes.find(c => c.id === classId);
-    
     // Validate that the course can be added to this class
-    if (targetClass && draggingCourse.value) {
-      if (!canClassAcceptCourse(targetClass, draggingCourse.value.id)) {
-        dragError.value = `Course "${draggingCourse.value.title}" is already assigned to this class`;
-        emit('error', dragError.value);
-        clearMessages();
-        return;
-      }
-      
-      // Add the course to the class
-      const result = await classStore.addCourseToClass({
-        class_id: classId,
-        course_id: draggingCourse.value.id
+    if (!canClassAcceptCourse(targetClass, courseToAssign.id)) {
+      const errorMsg = `Course "${courseToAssign.title}" is already assigned to this class`;
+      logDebug(errorMsg);
+      dragError.value = errorMsg;
+      emit('error', dragError.value);
+      clearMessages();
+      return;
+    }
+    
+    logDebug('Adding course to class:', { courseId: courseToAssign.id, classId });
+    
+    // Add the course to the class
+    const result = await classStore.addCourseToClass({
+      class_id: classId,
+      course_id: courseToAssign.id
+    });
+    
+    if (result) {
+      // Record successful assignment
+      assignmentHistory.value.push({
+        courseId: courseToAssign.id,
+        classId: classId,
+        timestamp: Date.now()
       });
       
-      if (result) {
-        // Record successful assignment
-        assignmentHistory.value.push({
-          courseId: draggingCourse.value.id,
-          classId: classId,
-          timestamp: Date.now()
-        });
-        
-        successMessage.value = `Course "${draggingCourse.value.title}" successfully assigned to ${targetClass.name}`;
-        emit('classUpdated', { classId, courseId: draggingCourse.value.id });
-        clearMessages();
-      } else {
-        // If the store function returns false, it should have set an error message
-        dragError.value = classStore.error || 'Failed to assign course to class';
-        emit('error', dragError.value);
-        clearMessages();
-      }
+      successMessage.value = `Course "${courseToAssign.title}" successfully assigned to ${targetClass.name}`;
+      emit('classUpdated', { classId, courseId: courseToAssign.id });
+      clearMessages();
+      logDebug('Successfully assigned course to class');
+    } else {
+      // If the store function returns false, it should have set an error message
+      const errorMsg = classStore.error || 'Failed to assign course to class';
+      logDebug(errorMsg);
+      dragError.value = errorMsg;
+      emit('error', dragError.value);
+      clearMessages();
     }
   } catch (error) {
-    dragError.value = error instanceof Error ? error.message : 'An error occurred during the drop operation';
+    const errorMsg = error instanceof Error ? error.message : 'An error occurred during the drop operation';
+    logDebug(errorMsg);
+    dragError.value = errorMsg;
     emit('error', dragError.value);
     clearMessages();
   } finally {
@@ -222,6 +261,12 @@ const undoLastAssignment = async () => {
 
 // Lifecycle hooks
 onMounted(() => {
+  // Log the received props to help with debugging
+  logDebug('Component mounted with props:', { 
+    courses: props.courses.length, 
+    classes: props.classes.length 
+  });
+  
   // Add event listener for escape key to cancel drag
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && draggingCourse.value) {
@@ -233,15 +278,31 @@ onMounted(() => {
 // Watch for store errors
 watch(() => classStore.error, (newError) => {
   if (newError) {
+    logDebug('Store error:', newError);
     dragError.value = newError;
     emit('error', dragError.value);
     clearMessages();
   }
 });
+
+// Additional debug watchers
+watch(() => props.courses, (newCourses) => {
+  logDebug('Courses updated:', newCourses.length);
+}, { deep: true });
+
+watch(() => props.classes, (newClasses) => {
+  logDebug('Classes updated:', newClasses.length);
+}, { deep: true });
 </script>
 
 <template>
   <div class="drag-drop-container">
+    <!-- Debug info (can be removed in production) -->
+    <div class="debug-info mb-4" v-if="false">
+      <pre>Courses: {{ props.courses.length }}, Classes: {{ props.classes.length }}</pre>
+      <pre v-if="draggingCourse">Dragging: {{ (draggingCourse as Course).title }}</pre>
+    </div>
+    
     <!-- Status messages -->
     <div class="status-messages">
       <v-alert
@@ -287,9 +348,17 @@ watch(() => classStore.error, (newError) => {
         </v-btn>
       </div>
       
-      <v-row>
+      <v-row v-if="props.classes.length === 0">
+        <v-col cols="12">
+          <v-alert type="info" variant="tonal">
+            You don't have any classes assigned to you yet.
+          </v-alert>
+        </v-col>
+      </v-row>
+      
+      <v-row v-else>
         <v-col 
-          v-for="classItem in classes" 
+          v-for="classItem in props.classes" 
           :key="classItem.id" 
           cols="12" 
           sm="6" 
@@ -318,9 +387,17 @@ watch(() => classStore.error, (newError) => {
         </div>
       </div>
       
-      <v-row>
+      <v-row v-if="props.courses.length === 0">
+        <v-col cols="12">
+          <v-alert type="info" variant="tonal">
+            You haven't created any courses yet.
+          </v-alert>
+        </v-col>
+      </v-row>
+      
+      <v-row v-else>
         <v-col 
-          v-for="course in courses" 
+          v-for="course in props.courses" 
           :key="course.id" 
           cols="12" 
           sm="6" 
@@ -329,7 +406,6 @@ watch(() => classStore.error, (newError) => {
         >
           <CourseCard
             :course="course"
-            draggable="true"
             @dragstart="(e) => handleDragStart(course, e)"
             @dragend="handleDragEnd"
           />

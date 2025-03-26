@@ -53,8 +53,16 @@ const cardClass = computed(() => {
 
 // Event handlers with proper TypeScript typings
 const handleDragOver = (event: DragEvent) => {
-  // Only emit if not in student view
+  // Prevent default to allow drop
+  event.preventDefault();
+  
+  // Check if we should allow drop based on student view
   if (!props.isStudentView) {
+    // Set the drop effect
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    
     emit('dragover', event);
   }
 };
@@ -67,8 +75,12 @@ const handleDragLeave = (event: DragEvent) => {
 };
 
 const handleDrop = (event: DragEvent) => {
+  // Always prevent default for drop events
+  event.preventDefault();
+  
   // Only emit if not in student view
   if (!props.isStudentView) {
+    console.log('[ClassCard] Drop event on:', props.classItem.name);
     emit('drop', event);
   }
 };

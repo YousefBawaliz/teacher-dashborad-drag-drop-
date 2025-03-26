@@ -47,6 +47,8 @@ const difficultyColor = computed(() => {
 
 // Handle drag start event
 const handleDragStart = (event: DragEvent) => {
+  console.log('[CourseCard] Drag start:', props.course.id);
+  
   if (props.isStudentView) {
     // Prevent dragging in student view
     event.preventDefault();
@@ -56,7 +58,15 @@ const handleDragStart = (event: DragEvent) => {
   // Set data transfer for drag operation
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', props.course.id.toString());
+    
+    // Store course data as JSON
+    event.dataTransfer.setData('application/json', JSON.stringify({
+      courseId: props.course.id,
+      courseTitle: props.course.title
+    }));
+    
+    // Also store as plain text for fallback
+    event.dataTransfer.setData('text/plain', `Course: ${props.course.title}`);
     
     // Add a ghost image (optional)
     const dragImage = event.target as HTMLElement;
@@ -65,11 +75,27 @@ const handleDragStart = (event: DragEvent) => {
     }
   }
   
+  // Add class to indicate dragging state
+  document.body.classList.add('dragging');
+  const cardElement = event.currentTarget as HTMLElement;
+  if (cardElement) {
+    cardElement.classList.add('dragging');
+  }
+  
   emit('dragstart', event);
 };
 
 // Handle drag end event
 const handleDragEnd = (event: DragEvent) => {
+  console.log('[CourseCard] Drag end');
+  
+  // Remove dragging classes
+  document.body.classList.remove('dragging');
+  const cardElement = event.currentTarget as HTMLElement;
+  if (cardElement) {
+    cardElement.classList.remove('dragging');
+  }
+  
   if (!props.isStudentView) {
     emit('dragend', event);
   }
@@ -155,6 +181,11 @@ const handleDragEnd = (event: DragEvent) => {
 
 .course-card[draggable=true]:active {
   cursor: grabbing;
+}
+
+.course-card.dragging {
+  opacity: 0.6;
+  transform: scale(0.95);
 }
 
 .drag-handle {
