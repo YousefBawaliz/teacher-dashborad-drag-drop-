@@ -1,30 +1,61 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted } from 'vue';
+import { useAuthStore } from './stores/auth.store';
+import { useRoute, useRouter } from 'vue-router';
+
+// Initialize auth store to check for existing session
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+// Check authentication status on app mount
+onMounted(() => {
+  // Initialize auth from localStorage if available
+  authStore.initAuth();
+  
+  // For testing DashboardView, we'll skip auth checks
+  // const isLoginPage = route.path === '/login';
+  
+  // if (!authStore.isAuthenticated && !isLoginPage) {
+  //   // Redirect to login if not authenticated
+  //   router.push('/login');
+  // } else if (authStore.isAuthenticated && isLoginPage) {
+  //   // Redirect to dashboard if already authenticated
+  //   router.push('/');
+  // }
+});
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" />
+  <v-app>
+    <router-view />
+  </v-app>
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style>
+/* Essential styles only */
+:root {
+  --app-background: #f5f7fa;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+html, body {
+  background-color: var(--app-background);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Roboto', sans-serif;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+/* Commented out utility classes as they might be used elsewhere
+.cursor-pointer {
+  cursor: pointer;
 }
+
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing !important;
+} */
 </style>
